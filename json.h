@@ -8,7 +8,8 @@ typedef enum
    json_none = 0,
    json_object, // { }
    json_array,
-   json_number,
+   json_integer,
+   json_double,
    json_string,
    json_bool, 
    json_null
@@ -26,9 +27,10 @@ typedef struct _json_value
    json_type type;
    union
    {
-      char * number;
       char * string;
       int boolean;
+      double dbl;
+      long long integer;
 
       struct 
       {
@@ -36,12 +38,11 @@ typedef struct _json_value
         int length;
       } object;
 
-      /*struct
+      struct
       {
-         struct _json_value **values;
+         struct _json_value ** values;
          int length;
       } array;
-      */
    } u;
    struct _json_value * next;
 } json_value;
