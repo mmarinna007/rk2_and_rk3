@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
     FILE *fp       = NULL;
     struct stat stat_file = {0};
  
-    csv_table tb;
+    json_value tb;
     if ( stat(filename, &stat_file) != 0 ) {
         (void)fprintf(stderr, "File %s not found\n", filename);
     }
@@ -28,7 +28,6 @@ int main(int argc, char **argv) {
     }
     
     parse2json(content, &tb);
-
 
     fclose(fp);
     free(content);
