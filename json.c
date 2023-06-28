@@ -111,7 +111,7 @@ set_value(json_value * value, char * str)
 
         printf("CHECK VALUE \'%s\n", str + i);
     if (str[i] == 'n') { // maybe null
-        if (strncmp(str + i, "ull", 3) == 0) {
+        if (strncmp(str + i + 1, "ull", 3) == 0) {
             value->type = json_null;
             end = i + 4;
             err = 0;
@@ -135,7 +135,7 @@ set_value(json_value * value, char * str)
     }
     else if (str[i] == '-' || isdigit(str[i])) { // maybe number
         printf("try check integer \'%s\n", str + i);
-        if (set_number(str + i, &end, value)) {
+        if (set_number(str + i, &end, value) == 0) {
             err = 0;
         }
     }
@@ -152,12 +152,9 @@ set_value(json_value * value, char * str)
     else if (str[i] == '\"') { // maybe string
         value->type = json_string;
         end = set_key(&value->u.string, str + i);
-        if (end != -1) {
+        if (end == 0) {
             err = 0;
         }
-    }
-    else {
-        printf("nothing\n");
     }
     return err;
 }
