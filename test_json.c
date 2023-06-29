@@ -4,13 +4,19 @@
 #include "json.h"
 void print_json(json_value const *tb)
 {
+    static int deep = 0;
+    for (int i = 0; i < deep; i++) {
+        printf("\t");
+    }
+    deep++;
     if (tb->type == json_object) {
         printf("{\n");
         for (int i = 0; i < tb->u.object.length; i++) {
-            printf("[%i]%s :", i, tb->u.object.values[i].key);
+            printf("[%i]%s : ", i, tb->u.object.values[i].key);
             print_json(tb->u.object.values[i].value);
         }
         printf("\n}\n");
+        deep--;
         return;
     }
     switch (tb->type) {
@@ -32,6 +38,7 @@ void print_json(json_value const *tb)
             printf("null\n");
             break;
     }
+    deep--;
 }
 int main(int argc, char **argv) {
     if (argc == 1) {
@@ -56,7 +63,7 @@ int main(int argc, char **argv) {
     }
 
     content = calloc(1, stat_file.st_size + 1);
-    printf("size of file %zu\n", stat_file.st_size);
+    //printf("size of file %zu\n", stat_file.st_size);
     //printf("%zu\n", fread(content, stat_file.st_size, 1, fp));
     if ( fread(content, 1, stat_file.st_size, fp) != stat_file.st_size) {
         (void)fprintf(stderr, "Unable to read content of %s\n", filename);
@@ -66,7 +73,9 @@ int main(int argc, char **argv) {
     }
     
     parse2json(content, &tb);
+    printf("==========================\n");
     print_json(&tb);
+    printf("==========================\n");
 
     fclose(fp);
     free(content);

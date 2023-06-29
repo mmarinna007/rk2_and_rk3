@@ -40,10 +40,11 @@ set_key(char ** key, char * str)
     }
     str[end] = '\0';
     *key = str + start;
+    printf("key: %s [%i:%i]\n", *key, start, end);
     return end;
 }
 static int
-set_number(char * str, int *end, json_value * value)
+set_number(char * str, json_value * value)
 {
     int i = str[0] == '-' ? 1 : 0;
     int dots = 0;
@@ -76,7 +77,6 @@ set_number(char * str, int *end, json_value * value)
         return -1;
     }
 
-    *end = i;
     if (dots == 0) {
         value->type = json_integer;
         value->u.integer = atoll(str);
@@ -85,7 +85,7 @@ set_number(char * str, int *end, json_value * value)
         value->type = json_double;
         value->u.dbl = strtod(str, &p);
     }
-    return 0;
+    return i;
 }
 /*static void
 check_true_type(json_value * value, json_type type, char const *str, char const *check)
@@ -98,9 +98,8 @@ set_array(char *str)
 static int
 set_value(json_value * value, char * str)
 {
-    int err = -1;
     int i = 0;
-    int end = 0;
+    int end = -1;
     value->type = json_none;
     
     for (; str[i]; i++) {
@@ -109,12 +108,11 @@ set_value(json_value * value, char * str)
         }
     }
 
-        printf("CHECK VALUE \'%s\n", str + i);
+        //printf("CHECK VALUE \'%s\n", str + i);
     if (str[i] == 'n') { // maybe null
         if (strncmp(str + i + 1, "ull", 3) == 0) {
             value->type = json_null;
             end = i + 4;
-            err = 0;
         }
     }
     else if (str[i] == 't') {
@@ -122,7 +120,6 @@ set_value(json_value * value, char * str)
             value->type = json_bool;
             value->u.boolean = 1;
             end = i + 4;
-            err = 0;
         }
     }
     else if (str[i] == 'f') {
@@ -130,18 +127,19 @@ set_value(json_value * value, char * str)
             value->type = json_bool;
             value->u.boolean = 0;
             end = i + 5;
-            err = 0;
         }
     }
     else if (str[i] == '-' || isdigit(str[i])) { // maybe number
-        printf("try check integer \'%s\n", str + i);
-        if (set_number(str + i, &end, value) == 0) {
-            err = 0;
+        //printf("try check integer \'%s\n", str + i);
+        end = set_number(str + i, value);
+        if (end != -1) {
+            end += i;
         }
     }
     else if (str[i] == '{') { // maybe object
-        if (!set_object(value, str + i + 1)) {
-            err = 0;
+        end = set_object(value, str + i + 1);
+        if (end != -1) {
+            end += i;
         }
     }
     else if (str[i] == '[') { // maybe array
@@ -151,12 +149,14 @@ set_value(json_value * value, char * str)
     }
     else if (str[i] == '\"') { // maybe string
         value->type = json_string;
+        printf("value-");
         end = set_key(&value->u.string, str + i);
-        if (end == 0) {
-            err = 0;
+        if (end != -1) {
+            end += i + 1;
         }
+        printf("end = \'%s\n", str + end);
     }
-    return err;
+    return end;
 }
 static int
 skip_dots(char * str)
@@ -175,15 +175,16 @@ skip_dots(char * str)
 static int
 set_object(json_value * curr, char * str)
 {
+    static int c = 0;
     // Начинать с открывающей скобки
     curr->type = json_object;
     curr->u.object.values = NULL;
     curr->u.object.length = 0;
 
     int i = 0;
-    int pos = 0;
+    int pos = str[0] == '{' ? 1 : 0;
     int end = 0;
-    //while (str[pos] != '}') {
+    while (str[pos] != '}') {
         curr->u.object.values = realloc(curr->u.object.values, 
                                       sizeof(json_object_entry) * (i + 1));
 
@@ -203,46 +204,21 @@ set_object(json_value * curr, char * str)
             return -1;
         } // на запятой или на конце value
         pos += end + 1;
-
+        //printf("END: %s\n", str + pos);
         i++;
         curr->u.object.length++;
-    //}
-
-    return 0;
-}
-static int
-parsing(char * str, json_value * value)
-{
-    int err = 0;
-
-    json_value *curr = value;
-    int i = 0;
-    for (i = 0; err == 0 && str[i]; i++)
-    {
-        if (str[i] == '{') {
-            err = set_object(curr, str + i + 1);
-            printf("Found key: %s\n", curr->u.object.values[0].key);
-            //printf("Found values: %s\n", curr->u.object.values[0].);
-            break;
-            /*curr->length = 0;
-            curr->type = json_object;
-            curr->value = json_object;
-            do {
-                curr->values = 
-                get_key(str, i);
-                get_value(str, i);
-            } while (str[i] != '}');
-            */
+        //printf("OBJECT %d %s\n", ++c, curr->u.object.values[i].key);
+        while (str[pos] == ',' || isspace(str[pos])) {
+            pos += 1;
+            if (str[pos] == '\0') {
+                fprintf(stderr, "Expected \'}\' close object\n");
+                return -1;
+            }
         }
-    } // for (stc[i])
-
-/*    if (err) {
-        fprintf(stderr, "Different character [%c: pos: %i] was expected\n",
-                stack[top - 1], i + 1
-               );
     }
-    */
-    return 0;
+    pos += 1;
+
+    return pos;
 }
 int 
 parse2json(char const * src, json_value * value)
@@ -250,10 +226,27 @@ parse2json(char const * src, json_value * value)
     int err = 0;
     char *copy_src = strdup(src);
     value->type = json_none;
-    //value->parent = NULL;
     value->next = NULL;
-    
-    err = parsing(copy_src, value);
+
+    int i = 0;
+    while (err == 0) {
+        if (copy_src[i] == '{') {
+            break;
+        } 
+        else if (!isspace(copy_src[i])) {
+            fprintf(stderr, "%s\n", 
+                    copy_src[i] == '\0' ? "Empty json-file. Expected object" : "Wrong json-format. Expected object\n"
+                    );
+            err = 1;
+        }
+        i++;
+    }
+    if (err == 0) {
+        if (set_object(value, copy_src + i) == -1) {
+            err = 1;
+        }
+        printf("key %s\n", value->u.object.values[i].key);
+    }
     if (err) {
         free(copy_src);
     }
