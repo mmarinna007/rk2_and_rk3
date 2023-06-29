@@ -1,42 +1,105 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <ctype.h>
 #include "json.h"
 #include "csv.h"
 
+static void
+print_value(FILE * file, char const * str)
+{
+    while (str[0] == ' ') {
+        str++;
+    }
+    int i = str[0] == '-' ? 1 : 0;
+    int is_str = 0;
+    for (; str[i]; i++) { 
+        if (!isdigit(str[i])) {
+            is_str = 1;
+            break;
+        }
+    }
+
+    if (is_str) {
+        fprintf(file, "\"");
+    }
+    fprintf(file, "%s", str);
+    if (is_str) {
+        fprintf(file, "\"");
+    }
+}
 static int
-tojson(char const *f2, csv_table const * tb)
+tojson(csv_table const * tb, char const * f2)
 {
+    FILE * file = fopen(f2, "wt");
+    if (file == NULL) {
+        fprintf(stderr, "File-result %s unable create\n", f2);
+        return 2;
+    }
+
+    if (tb->length == 1) {
+        fprintf(file, "{\n");
+        for (int i = 0; i < tb->data[0].length; i++) {
+            if (i != 0) {
+                fprintf(file, ", ");
+            }
+            fprintf(file, "\"%s\" : \"%s\"", tb->data[0].key, tb->data[0].values[i]);
+        }
+        fprintf(file, "\n}");
+    }
+    else {
+        fprintf(file, "\"%s\" : [\n", tb->data[0].key);
+        for (int i = 0; i < tb->data[0].length; i++) {
+            if (i > 0) {
+                fprintf(file, ",\n");
+            }
+
+            fprintf(file, "\t\"%s\" : {\n", tb->data[0].values[i]);
+            for (int j = 1; j < tb->length; j++) {
+                if (j > 1) {
+                    fprintf(file, ",\n");
+                }
+                fprintf(file, "\t\"%s\" : ", tb->data[j].key);
+                print_value(file, tb->data[j].values[i]);
+            }
+            fprintf(file, "\n\t}");
+        }
+        fprintf(file, "\n]\n");
+    }
+
+    fclose(file);
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+
+static void
+tocsv(json_value const *v, char const * f2)
+{
+    FILE * file = fopen(f2, "wt");
+    if (file == NULL) {
+        fprintf(stderr, "File-result %s unable create\n", f2);
+        return;
+    }
     
+    fclose(file);
 }
-static char* 
-get_content_file(char const *filename)
-{
-    // прочитать содержимое файла (функция из рк1)
-    char *content  = NULL;
-    FILE *fp       = NULL;
-    struct stat stat_file = {0};
- 
-    if ( stat(filename, &stat_file) != 0 ) {
-        (void)fprintf(stderr, "File %s not found\n", filename);
-        return NULL;
-    }
-    fp = fopen(filename, "rt");
-    if (fp == NULL) {
-        (void)fprintf(stderr, "Unable to open %s\n", filename);
-        return NULL;
-    }
 
-    content = calloc(1, stat_file.st_size + 1);
-    if ( fread(content, 1, stat_file.st_size, fp) != stat_file.st_size) {
-        (void)fprintf(stderr, "Unable to read content of %s\n", filename);
-        free(content);
-        content = NULL;
-    }
 
-    fclose(fp);
-    return content;
-}
+
+
+
+
+
+
+
 int 
 csv2json(char const * f1, char const * f2)
 {
@@ -49,6 +112,7 @@ csv2json(char const * f1, char const * f2)
         free(content);
         return 2;
     }
+
     tojson(&tb, f2);
     destroy_csvtable(&tb);
     return 0;
@@ -56,14 +120,12 @@ csv2json(char const * f1, char const * f2)
 int 
 json2csv(char const * f1, char const * f2)
 {
-    /*char *content = get_content_file(f1);
+    char *content = get_content_file(f1);
     if (content == NULL) {
         return 1;
     } 
     json_value *tb = parse2json(content);
-    // перевод
-
+    //tocsv(tb, f2);
     destroy(tb);
-    */
     return 0;
 }

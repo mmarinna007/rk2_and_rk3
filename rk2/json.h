@@ -45,7 +45,8 @@ typedef struct _json_value
    } u;
 } json_value;
 
-json_value* parse2json(char const * content);// json_value * value);
+// ToDo: первый объект может быть массивом
+json_value* parse2json(char const * content);
 void destroy(json_value * value);
 
 void print_json(FILE * outstream, json_value const * value);

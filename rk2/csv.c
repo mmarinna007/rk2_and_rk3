@@ -4,38 +4,6 @@
 #include <stdlib.h>
 
 
-    /*res->count = 0;
-    res->lines = malloc(sizeof(char*) * DELTA_ALLCT);
-
-    char *line = strtok(chg_line, "\n");
-    while (line) {
-        res->lines[res->count] = line;
-        res->count++;
-        if (res->count % DELTA_ALLCT == 0) {
-            res->lines = realloc(res->lines, sizeof(char*) * (res->count + DELTA_ALLCT));
-        }
-        res->lines = strtok(NULL, "\n");
-    }
-    res->lines = realloc(res->lines, sizeof(char*) * res->count);
-    */
-static void 
-strboard(char const *s, int *start, int *len)
-{
-/*    *start = 0;
-    int i = 0;
-    while (s[i] && s[i] <= 32) { // '\t' || space etc.
-        i++;
-    }
-    *start = i;
-    
-    int j = strlen(s + i); // last_symbol
-    while (j > i && s[j] <= 32) {
-        j--;
-    }
-    *len = j;
-    // взять актуальный размер строки
-    */
-}
 static int
 set_keys(csv_table *tb, char *line)
 {
@@ -50,7 +18,6 @@ set_keys(csv_table *tb, char *line)
             } else {
                 line[i] = '\0';
             }
-            // ToDo: performace realloc
             tb->data = realloc(tb->data, sizeof(csv_format) * (tb->length + 1));
 
             //printf("set: %s\n", line + start); - ok
@@ -71,8 +38,6 @@ static int
 set_values(csv_table *tb, char *line)
 {
     int err = 0;
-    // ToDo: ошибочная ситуация (кол-во value > key)
-    //       строка пуста
     int start = 0, i = 0;
     int loop = 1;
     int index_key = 0;
@@ -86,7 +51,6 @@ set_values(csv_table *tb, char *line)
             }   
             it->values = realloc(it->values, sizeof(char*) * (it->length + 1));
             it->values[it->length] = line + start;
-            printf("Value: %s\n", line + start);
             it->length += 1;
             start = i + 1;
             

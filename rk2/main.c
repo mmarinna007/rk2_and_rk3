@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     // проверка конечного файла
     char buf[64] = {0};
     char *file2 = argv[2];
-    if (file != NULL) {
+    if (file2 != NULL) {
         if (strend(file2, (is_csv == 0 ? ".json" : ".csv")) == 1) {
             (void)fprintf(stderr, "File format must be different [%s - %s]\n", file1, file2);
             return 5;
@@ -60,7 +60,7 @@ int main(int argc, char **argv)
     }
     else { // если не был пропущено второе имя файла, тогда сохраняем имя исходного файла, заменяя расширение на противоположное
         strcpy(buf, file1);
-        strcpy(strchr(buf, "."), (is_csv == 0 ? ".csv" : ".json"));
+        strcpy(strchr(buf, '.'), (is_csv == 0 ? ".csv" : ".json"));
         file2 = buf;
     }
     // Статусом завершения программы зависит от статуса конвертирования.
