@@ -64,7 +64,6 @@ int main(int argc, char **argv) {
     FILE *fp       = NULL;
     struct stat stat_file = {0};
  
-    json_value tb;
     if ( stat(filename, &stat_file) != 0 ) {
         (void)fprintf(stderr, "File %s not found\n", filename);
         return -1;
@@ -85,11 +84,15 @@ int main(int argc, char **argv) {
         return -1;
     }
     
-    parse2json(content, &tb);
-    printf("==========================\n");
-    print_json(&tb);
-    printf("==========================\n");
-
+    json_value *tb = parse2json(content);
+    if (tb != NULL) {
+        printf("==========================\n");
+        print_json(tb);
+        printf("==========================\n");
+        destroy(tb);
+    } else {
+        
+    }
     fclose(fp);
     free(content);
 }

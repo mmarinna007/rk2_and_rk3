@@ -23,7 +23,6 @@ typedef struct _json_object_entry
 
 typedef struct _json_value
 {
-   //struct _json_value * parent;
    json_type type;
    union
    {
@@ -44,9 +43,9 @@ typedef struct _json_value
          int length;
       } array;
    } u;
-   struct _json_value * next;
 } json_value;
 
-int parse2json(char const * content, json_value * value);
+json_value* parse2json(char const * content);// json_value * value);
+void destroy(json_value * value);
 
 #endif 
