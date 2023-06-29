@@ -4,6 +4,11 @@
 #include "json.h"
 #include "csv.h"
 
+static int
+tojson(char const *f2, csv_table const * tb)
+{
+    
+}
 static char* 
 get_content_file(char const *filename)
 {
@@ -26,9 +31,10 @@ get_content_file(char const *filename)
     if ( fread(content, 1, stat_file.st_size, fp) != stat_file.st_size) {
         (void)fprintf(stderr, "Unable to read content of %s\n", filename);
         free(content);
-        fclose(fp);
-        return NULL;
+        content = NULL;
     }
+
+    fclose(fp);
     return content;
 }
 int 
@@ -39,8 +45,11 @@ csv2json(char const * f1, char const * f2)
         return 1;
     }
     csv_table tb = {0};
-    content2csv(content, &tb);
-    
+    if (content2csv(content, &tb)) {
+        free(content);
+        return 2;
+    }
+    tojson(&tb, f2);
     destroy_csvtable(&tb);
     return 0;
 }

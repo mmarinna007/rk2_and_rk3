@@ -7,68 +7,79 @@
 static int set_value(json_value * value, char const * str);
 static int set_object(json_value * curr, char const * str);
  
+/*
+ *  Функция для опеределения границ json_string
+ *      json_string - строка в кавычках.
+ */
 static int
 string_diaposon(char const * str, int *st, int *en)
 {
     int i = 0;
-    while (str[i] != '\"') {
-        if (str[i] == '\0' || !isspace(str[i])) { // 
-            (void)fprintf(stderr, "Failed. Expected key-string.\n", str + i);
+    while (str[i] != '\"') { // определить начало
+        if (str[i] == '\0' || !isspace(str[i])) { // если встретися ломающий символ
+            (void)fprintf(stderr, "Failed. Expected key-string.\n");
             return -1; // failure
         }
         i++;
     }
 
     int j = i + 1;
-    while (str[j] != '\"') {
+    while (str[j] != '\"') { // определить конец
         if (str[j] == '\0' || str[j] == '\n') {
-            (void)fprintf(stderr, "Failed. Expected end of key-string.\n", str + i);
+            (void)fprintf(stderr, "Failed. Expected end of key-string.\n");
             return -1;
         }
         j++;
     }
 
+    // результат функции, определяющий поведение других функций
     *st = i + 1;
     *en = j;
     return 0;
 }
+/*
+ *  Взятие строчного ключа для пары "Ключ" - значение  
+ */
 static int
 set_key(char ** key, char const * str)
 {
     int start = 0, end = 0;
-    if (string_diaposon(str, &start, &end)) {
+    if (string_diaposon(str, &start, &end)) { // определяем где начинается, где заканчивается
         return -1;
     }
     // str[end] = '\0';
-    *key = calloc(sizeof(char), (end - start + 1));
+    *key = calloc(sizeof(char), (end - start + 1)); // выделяем память для результата
     if (*key == NULL) {
         (void)fprintf(stderr, "Doesn't allocate memory for key %s\n", __func__);
         return -1;
     }
-    (void)memcpy(*key, str + start, sizeof(char) * (end - start));
-    return end;
+    (void)memcpy(*key, str + start, sizeof(char) * (end - start));  // копируем строку
+    return end; // вернули позицию последнего символа
 }
+/*
+ * Перевод из строки в число (double || int)
+ */
 static int
 set_number(char const * str, json_value * value)
 {
-    int i = str[0] == '-' ? 1 : 0;
-    int dots = 0;
+    int i = str[0] == '-' ? 1 : 0; // чтобы начать проверку с цифр и точек
+    int dots = 0; 
     for (; str[i]; i++) { 
         if (isdigit(str[i])) {
             continue;
         }
         else if (str[i] == '.') {
             dots++;
-            if (dots == 2) {
+            if (dots == 2) { // В числе может быть одна дробная часть
                 (void)fprintf(stderr, "Wrong value-number (a lot of dots in number)\n");
                 return -1;
             }
         }
-        else if (isspace(str[i]) || str[i] == ',' || str[i] == ']' || str[i] == '}') {
+        else if (isspace(str[i]) || str[i] == ',' || str[i] == ']' || str[i] == '}') { // допустимые символы после числа
             break;
         }
         else {
-            (void)fprintf(stderr, "Wrong value-number (неправильный разделить после числа\n");
+            (void)fprintf(stderr, "Wrong value-number (неправильный разделитель после числа\n");
             return -1;
         }
     }
@@ -82,50 +93,61 @@ set_number(char const * str, json_value * value)
         return -1;
     }
 
-    if (dots == 0) {
+    if (dots == 0) { // если не было точек
         value->type = json_integer;
-        value->u.integer = atoll(str);
+        value->u.integer = atoll(str); // из станд. библиотеки функция, которая перевод из строки в long long значение
         //(void)printf("integer: %i\n", value->u.integer);
     } else {
-        char *p;
+        char *p; // переменная для ф-ии strtod, результатом будет адрес последнего символа
         value->type = json_double;
-        value->u.dbl = strtod(str, &p);
+        value->u.dbl = strtod(str, &p); // станд. библ., из строки в double
         //(void)printf("double: %lf\n", value->u.dbl);
     }
-    return i;
+    return i; // вернули позицию символа идущего после обработанного исла
 }
+/*
+ * Определение значений в массиве (json_array)
+ */
 static int
 set_array(json_value * value, char const * str)
 {
-    value->type = json_array;
+    value->type = json_array;      // стартовые значения
     value->u.array.values = NULL;
     value->u.array.length = 0;
 
     int i = 0;
-    int pos = str[0] == '[' ? 1 : 0;
+    int pos = str[0] == '[' ? 1 : 0; 
     int end = 0;
     int err = 0;
-    while (err == 0 && str[pos] != ']') {
+    // Перебираем символы в строке пока не встретилась ошибка ИЛИ не закончились эл-ты
+    while (err == 0 && str[pos] != ']') { 
+        // Некоторые тонкости: [от NULL тоже работает, как и при любом другом адресе]  
+        // realloc(NULL, ...);
+        
+        // добавили в общую тару кусочек памяти для нового эл-та массива
         value->u.array.values = realloc(value->u.array.values, 
-                                      sizeof(json_value*) * (i + 1));
+                                      sizeof(json_value*) * (i + 1)); 
 
+        // непосредственно для самого эл-та массива
         value->u.array.values[i] = calloc(sizeof(json_value), 1);
+        // __func__ - станд. макрос для вывода имени функции (т.е. сейчас __func__ = set_array)
         if (value->u.array.values[i] == NULL) {
             (void)fprintf(stderr, "Failed allocate memory for value of array in %s\n", __func__);
             err = 1;
             break;
         }
-//        printf("status %s\n=======================\n", str + pos);
+        
+        // Попытка взять значение
         if ( (end = set_value(value->u.array.values[i], str + pos)) == -1 ) {
             (void)fprintf(stderr, "Invalid value of array\n");
             err = 1;
-        } // на запятой или на конце value
-        pos += end;
-        //printf("END: %s\n", str + pos);
+        } 
+        pos += end; // переход на позицию следующего зн-ия 
+                    
         i++;
-        value->u.array.length++;
-        //printf("OBJECT %d %s\n", ++c, curr->u.object.values[i].key);
-        while (str[pos] == ',' || isspace(str[pos])) {
+        value->u.array.length++; // Общее кол-во эл-ов массива
+                                 
+        while (str[pos] == ',' || isspace(str[pos])) { // пропуск лишних символов
             pos += 1;
             if (str[pos] == '\0') {
                 (void)fprintf(stderr, "Expected \']\' close object\n");
@@ -134,8 +156,8 @@ set_array(json_value * value, char const * str)
             }
         }
     }
-    pos += 1;
-    if (err) {
+    pos += 1; // пропустили закрывающую фиг. скобку
+    if (err) { // если произошла ошибка, избегаем общей утечки
         for (int j = 0; j < i; j++) {
             destroy(value->u.array.values[i]);
         }
@@ -143,8 +165,13 @@ set_array(json_value * value, char const * str)
         return -1;
     }
 
-    return pos;
+    return pos; // позиция следующего необработанного значения
 }
+/*
+ *
+ * Определение что за зверь такой (NULL || число || булевое-значение || object || строка || массив )
+ *
+ */
 static int
 set_value(json_value * value, char const * str)
 {
@@ -390,7 +417,7 @@ out_json(FILE * stream, json_value const * tb, int depth)
 
         for (int i = 1; i < tb->u.object.length; i++) {
             print_depth_shift(stream, depth);
-            (void)fprintf(stream, ",\n%s : ", i, tb->u.object.values[i].key);
+            (void)fprintf(stream, ",\n%s : ", tb->u.object.values[i].key);
             out_json(stream, tb->u.object.values[i].value, depth + 1);
         }
         (void)fprintf(stream, "\n}\n");
@@ -402,19 +429,19 @@ out_json(FILE * stream, json_value const * tb, int depth)
             print_array(stream, tb, depth + 1);
             break;
         case json_integer:
-            (void)fprintf(stream, "%lld ", tb->u.integer);
+            (void)fprintf(stream, "%lld", tb->u.integer);
             break;
         case json_double:
-            (void)fprintf(stream, "%lf ", tb->u.dbl);
+            (void)fprintf(stream, "%lf", tb->u.dbl);
             break;
         case json_string:
-            (void)fprintf(stream, "%s ", tb->u.string);
+            (void)fprintf(stream, "%s", tb->u.string);
             break;
         case json_bool:
-            (void)fprintf(stream, (tb->u.boolean ? "true " : "false "));
+            (void)fprintf(stream, (tb->u.boolean ? "true" : "false"));
             break;
         case json_null:
-            (void)fprintf(stream, "null ");
+            (void)fprintf(stream, "null");
             break;
     }
 }

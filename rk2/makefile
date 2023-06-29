@@ -1,5 +1,5 @@
 all:
-		gcc json.c test_json.c -g -o ./test/program
+		gcc -Wall -Wextra -pedantic json.c test_json.c -g -o ./test/program
 		cd ./test
 		./program obj_str_double.json
 		cd ..
