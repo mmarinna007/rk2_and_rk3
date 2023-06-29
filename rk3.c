@@ -64,7 +64,7 @@ void erase(table_t *t, char const *s)
         t->l[h] = it->next;
         free(it);
     }
-    else {
+    else if (it != NULL) {
         while (it->next) {
             if (strcmp(it->next->city, s) == 0) {
                 node_t *n = it->next;
