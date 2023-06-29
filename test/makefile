@@ -1,5 +1,6 @@
 all:
 		#./program obj_str_double.json
+		# ./program obj_array1.json
 		./program obj_str_arr.json
 		#./program obj_str_integer.json
 		#./program obj_str_nll.json

@@ -2,6 +2,18 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include "json.h"
+
+void print_json(json_value const *tb);
+
+void print_array(json_value const *tb)
+{
+    printf("\n[");
+    for (int i = 0; i < tb->u.array.length; i++) {
+        print_json(tb->u.array.values[i]);
+        printf(" ");
+    }
+    printf("]\n");
+}
 void print_json(json_value const *tb)
 {
     static int deep = 0;
@@ -21,6 +33,7 @@ void print_json(json_value const *tb)
     }
     switch (tb->type) {
         case json_array:
+            print_array(tb);
             break;
         case json_integer:
             printf("%i\n", tb->u.integer);

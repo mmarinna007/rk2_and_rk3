@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 
+static int set_value(json_value * value, char * str);
 static int set_object(json_value * curr, char * str);
 
 static int
@@ -80,10 +81,12 @@ set_number(char * str, json_value * value)
     if (dots == 0) {
         value->type = json_integer;
         value->u.integer = atoll(str);
+        printf("integer: %i\n", value->u.integer);
     } else {
         char *p;
         value->type = json_double;
         value->u.dbl = strtod(str, &p);
+        printf("double: %lf\n", value->u.dbl);
     }
     return i;
 }
@@ -91,9 +94,41 @@ set_number(char * str, json_value * value)
 check_true_type(json_value * value, json_type type, char const *str, char const *check)
 */
 static int
-set_array(char *str)
+set_array(json_value * value, char * str)
 {
-    return 0;
+    value->type = json_array;
+    value->u.array.values = NULL;
+    value->u.array.length = 0;
+
+    int i = 0;
+    int pos = str[0] == '[' ? 1 : 0;
+    int end = 0;
+    while (str[pos] != ']') {
+        value->u.array.values = realloc(value->u.array.values, 
+                                      sizeof(json_value*) * (i + 1));
+
+        value->u.array.values[i] = malloc(sizeof(json_value));
+        printf("status %s\n=======================\n", str + pos);
+        if ( (end = set_value(value->u.array.values[i], str + pos)) == -1 ) {
+            fprintf(stderr, "Invalid value of array\n");
+            return -1;
+        } // на запятой или на конце value
+        pos += end;
+        //printf("END: %s\n", str + pos);
+        i++;
+        value->u.array.length++;
+        //printf("OBJECT %d %s\n", ++c, curr->u.object.values[i].key);
+        while (str[pos] == ',' || isspace(str[pos])) {
+            pos += 1;
+            if (str[pos] == '\0') {
+                fprintf(stderr, "Expected \']\' close object\n");
+                return -1;
+            }
+        }
+    }
+    pos += 1;
+
+    return pos;
 }
 static int
 set_value(json_value * value, char * str)
@@ -139,22 +174,23 @@ set_value(json_value * value, char * str)
     else if (str[i] == '{') { // maybe object
         end = set_object(value, str + i + 1);
         if (end != -1) {
-            end += i;
+            end += i + 1;
         }
     }
     else if (str[i] == '[') { // maybe array
-        //if (!set_array(str + i, &end, value)) {
-         //   err = 0;
-        //}
+        end = set_array(value, str + i);
+        if (end != -1) {
+            end += i;
+        }
     }
     else if (str[i] == '\"') { // maybe string
         value->type = json_string;
-        printf("value-");
+        //printf("value-");
         end = set_key(&value->u.string, str + i);
         if (end != -1) {
             end += i + 1;
         }
-        printf("end = \'%s\n", str + end);
+        //printf("end = \'%s\n", str + end);
     }
     return end;
 }
@@ -173,22 +209,22 @@ skip_dots(char * str)
     return i;
 }
 static int
-set_object(json_value * curr, char * str)
+set_object(json_value * value, char * str)
 {
     static int c = 0;
     // Начинать с открывающей скобки
-    curr->type = json_object;
-    curr->u.object.values = NULL;
-    curr->u.object.length = 0;
+    value->type = json_object;
+    value->u.object.values = NULL;
+    value->u.object.length = 0;
 
     int i = 0;
     int pos = str[0] == '{' ? 1 : 0;
     int end = 0;
     while (str[pos] != '}') {
-        curr->u.object.values = realloc(curr->u.object.values, 
+        value->u.object.values = realloc(value->u.object.values, 
                                       sizeof(json_object_entry) * (i + 1));
 
-        if ( (end = set_key(&curr->u.object.values[i].key, str + pos)) == -1 ) {
+        if ( (end = set_key(&value->u.object.values[i].key, str + pos)) == -1 ) {
             return -1;
         } // должно стоять на закрывающиеся кавычке
         pos += end + 1; // 
@@ -198,15 +234,15 @@ set_object(json_value * curr, char * str)
         }   // на двоеточие
         pos += end + 1;
         
-        curr->u.object.values[i].value = malloc(sizeof(json_value));
-        if ( (end = set_value(curr->u.object.values[i].value, str + pos)) == -1 ) {
-            fprintf(stderr, "Invalid value-format\n");
+        value->u.object.values[i].value = malloc(sizeof(json_value));
+        if ( (end = set_value(value->u.object.values[i].value, str + pos)) == -1 ) {
+            fprintf(stderr, "Invalid value of object\n");
             return -1;
         } // на запятой или на конце value
-        pos += end + 1;
+        pos += end;
         //printf("END: %s\n", str + pos);
         i++;
-        curr->u.object.length++;
+        value->u.object.length++;
         //printf("OBJECT %d %s\n", ++c, curr->u.object.values[i].key);
         while (str[pos] == ',' || isspace(str[pos])) {
             pos += 1;
@@ -217,6 +253,7 @@ set_object(json_value * curr, char * str)
         }
     }
     pos += 1;
+    printf("exit object %s\n\n", str + pos);
 
     return pos;
 }
@@ -245,7 +282,7 @@ parse2json(char const * src, json_value * value)
         if (set_object(value, copy_src + i) == -1) {
             err = 1;
         }
-        printf("key %s\n", value->u.object.values[i].key);
+        //printf("key %s\n", value->u.object.values[i].key);
     }
     if (err) {
         free(copy_src);
